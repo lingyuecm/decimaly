@@ -61,6 +61,35 @@ func (b1 *BinaryInteger) Negative() *BinaryInteger {
 	return i
 }
 
+func (b1 *BinaryInteger) Abs() string {
+	if signNegative == getSign(b1.complement) {
+		return b1.Negative().Abs()
+	}
+	m := make(map[string]byte)
+	for index, item := range digitBinaries {
+		m[item] = '0' + byte(index)
+	}
+
+	complement := b1.complement[1:]
+	// 2^3.3 Is about 9.8 so That the Number of Digits of Binaries Is about 3.3 Times of That of Decimals on Average
+	decLength := int(float64(len(complement))/3.3) + 1 // Add 1 in Case of Tolerance
+	decBytes := make([]byte, decLength, decLength)
+	var q string
+	var r string
+	var index int
+	for n := decLength - 1; n >= 0; n-- {
+		index = n
+		q, r = unsignedBinaryDivision(complement, ten)
+		decBytes[n] = m[r]
+		if "0" == q {
+			break
+		}
+		complement = q
+	}
+	result := decBytes[index:]
+	return *(*string)(unsafe.Pointer(&result))
+}
+
 func (b1 *BinaryInteger) Add(b2 *BinaryInteger) *BinaryInteger {
 	result := new(BinaryInteger)
 	result.complement = shrink(complementBinaryAddition(b1.complement, b2.complement))
@@ -202,7 +231,7 @@ func complementBinaryMultiplication(b1 string, b2 string) string {
 	l2 := len(b2)
 
 	result := ""
-	if signNegative == b2[0]-'0' {
+	if signNegative == getSign(b2) {
 		result = generateNegative(b1)
 	}
 
@@ -214,6 +243,66 @@ func complementBinaryMultiplication(b1 string, b2 string) string {
 		}
 	}
 	return shrink(result)
+}
+
+func unsignedBinaryDivision(b1 string, b2 string) (string, string) { // Quotient, Remainder
+	c := unsignedBinaryComparison(b1, b2)
+	if c < 0 {
+		return "0", b1
+	}
+
+	l1 := len(b1)
+	l2 := len(b2)
+	if l1 == l2 {
+		return "1", shrink(complementBinaryAddition("0"+b1, generateNegative("0"+b2)))[1:]
+	}
+
+	qh := shiftL("1", l1-l2)
+	var ql string
+	var q string
+	var p string
+	c = unsignedBinaryComparison(b1, shiftL(b2, l1-l2))
+	if c > 0 {
+		ql = qh
+		qh = shiftL(qh, 1)
+	} else if c < 0 {
+		ql = shiftR(qh, 1)
+	} else {
+		return qh, "0"
+	}
+	for {
+		q = shiftR(unsignedBinaryAddition(qh, ql), 1)
+		p = unsignedBinaryMultiplication(b2, q)
+		c = unsignedBinaryComparison(b1, p)
+		if c > 0 {
+			if unsignedBinaryComparison(b1, unsignedBinaryAddition(p, b2)) < 0 {
+				return q, shrink(complementBinaryAddition("0"+b1, generateNegative("0"+p)))[1:]
+			} else {
+				ql = q
+			}
+		} else if c < 0 {
+			qh = q
+		} else {
+			return q, "0"
+		}
+	}
+}
+
+func unsignedBinaryComparison(b1 string, b2 string) int {
+	l1 := len(b1)
+	l2 := len(b2)
+	if l1 < l2 {
+		return -1
+	} else if l1 > l2 {
+		return 1
+	}
+	for m := 0; m < l1; m++ {
+		if b1[m] == b2[m] {
+			continue
+		}
+		return int(b1[m]) - int(b2[m])
+	}
+	return 0
 }
 
 func shrink(complement string) string {
@@ -231,4 +320,24 @@ func shrink(complement string) string {
 		return complement[index-1:]
 	}
 	return complement[length-2:]
+}
+
+func getSign(complement string) byte {
+	return complement[0] - '0'
+}
+
+func shiftL(b1 string, length int) string {
+	zeros := make([]byte, length, length)
+	for m := 0; m < length; m++ {
+		zeros[m] = '0'
+	}
+	return b1 + *(*string)(unsafe.Pointer(&zeros))
+}
+
+func shiftR(b1 string, length int) string {
+	l := len(b1)
+	if length >= l {
+		return "0"
+	}
+	return b1[0 : l-length]
 }
