@@ -254,38 +254,44 @@ func unsignedBinaryDivision(b1 string, b2 string) (string, string) { // Quotient
 	l1 := len(b1)
 	l2 := len(b2)
 	if l1 == l2 {
-		return "1", shrink(complementBinaryAddition("0"+b1, generateNegative("0"+b2)))[1:]
+		return "1", shrink0(complementBinaryAddition("0"+b1, generateNegative("0"+b2)))
 	}
+	q, r := findPartialQuotient(b1, b2)
+	var l int
+	qba := *(*[]byte)(unsafe.Pointer(&q)) // Quotient Byte Array
+	ql := len(qba)
+	for unsignedBinaryComparison(r, b2) >= 0 {
+		l, r = findPartialQuotientLength(r, b2)
+		qba[ql-l] = '1'
+	}
+	return *(*string)(unsafe.Pointer(&qba)), r
+}
 
-	qh := shiftL("1", l1-l2)
-	var ql string
-	var q string
-	var p string
-	c = unsignedBinaryComparison(b1, shiftL(b2, l1-l2))
-	if c > 0 {
-		ql = qh
-		qh = shiftL(qh, 1)
-	} else if c < 0 {
-		ql = shiftR(qh, 1)
-	} else {
-		return qh, "0"
+func findPartialQuotient(b1 string, b2 string) (string, string) { // Partial Quotient, Remainder
+	l1 := len(b1)
+	l2 := len(b2)
+	l := l1 - l2
+	q := shiftL("1", l)
+	p := shiftL(b2, l)
+	c := unsignedBinaryComparison(b1, p)
+	if c < 0 {
+		q = shiftR(q, 1)
+		p = shiftR(p, 1)
 	}
-	for {
-		q = shiftR(unsignedBinaryAddition(qh, ql), 1)
-		p = unsignedBinaryMultiplication(b2, q)
-		c = unsignedBinaryComparison(b1, p)
-		if c > 0 {
-			if unsignedBinaryComparison(b1, unsignedBinaryAddition(p, b2)) < 0 {
-				return q, shrink(complementBinaryAddition("0"+b1, generateNegative("0"+p)))[1:]
-			} else {
-				ql = q
-			}
-		} else if c < 0 {
-			qh = q
-		} else {
-			return q, "0"
-		}
+	return q, shrink0(complementBinaryAddition("0"+b1, generateNegative("0"+p)))
+}
+
+func findPartialQuotientLength(b1 string, b2 string) (int, string) { // The Length of the Partial Quotient, Remainder
+	l1 := len(b1)
+	l2 := len(b2)
+	l := l1 - l2
+	p := shiftL(b2, l)
+	c := unsignedBinaryComparison(b1, p)
+	if c < 0 {
+		p = shiftR(p, 1)
+		l = l - 1
 	}
+	return l + 1, shrink0(complementBinaryAddition("0"+b1, generateNegative("0"+p)))
 }
 
 func unsignedBinaryComparison(b1 string, b2 string) int {
@@ -320,6 +326,16 @@ func shrink(complement string) string {
 		return complement[index-1:]
 	}
 	return complement[length-2:]
+}
+
+func shrink0(binary string) string {
+	length := len(binary)
+	for m := 0; m < length; m++ {
+		if '1' == binary[m] {
+			return binary[m:]
+		}
+	}
+	return "0"
 }
 
 func getSign(complement string) byte {
