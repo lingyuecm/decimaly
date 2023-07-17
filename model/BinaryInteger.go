@@ -3,43 +3,43 @@ package model
 import (
 	"errors"
 	"fmt"
-	"unsafe"
 )
 
-const ten string = "1010"
-const (
-	signPositive byte = iota
-	signNegative
-)
+type Segment = uint8
+type DoubleSegment = uint16
 
-var digitBinaries = [...]string{"0", "1", "10", "11", "100", "101", "110", "111", "1000", "1001"}
+const segmentLength = 8
+
+const segmentMask DoubleSegment = 1<<segmentLength - 1
+const carryThreshold DoubleSegment = 1 << segmentLength
+const ten Segment = 10
+
+const signPositive Segment = 0
+const signNegative Segment = 1
 
 type BinaryInteger struct {
-	complement string
+	complement []Segment
 }
 
-func CreateBinaryInteger(value string) (*BinaryInteger, error) {
+func CreateBigInteger(value string) (*BinaryInteger, error) {
 	length := len(value)
 	if 0 == length {
 		return nil, errors.New(fmt.Sprintf("Empty String"))
 	}
-	var sign byte
-	var startIndex int
+	var startIndex = 0
+	var sign = signPositive
 	if '+' == value[0] {
-		sign = signPositive
 		startIndex = 1
 	} else if '-' == value[0] {
-		sign = signNegative
 		startIndex = 1
-	} else {
-		sign = signPositive
-		startIndex = 0
+		sign = signNegative
 	}
 
-	original := "0"
+	result := make([]Segment, 1, 1)
+	digit := make([]Segment, 1, 1)
 	var found = false
 	for m := startIndex; m < length; m++ {
-		if value[m] > '9' || value[m] < '0' {
+		if value[m] < '0' || value[m] > '9' {
 			return nil, errors.New(fmt.Sprintf("Invalid Digit at %d: %c", m, value[m]))
 		}
 		if '0' == value[m] && !found {
@@ -47,83 +47,35 @@ func CreateBinaryInteger(value string) (*BinaryInteger, error) {
 		} else {
 			found = true
 		}
-		original = unsignedBinaryAddition(unsignedBinaryMultiplication(original, ten), digitBinaries[value[m]-'0'])
+		digit[0] = value[m] - '0'
+		result = unsignedAddition(generatePartialProduct(result, ten), digit)
 	}
-	i := new(BinaryInteger)
-	i.complement = shrink(generateComplement("0"+original, sign))
+	result = append(make([]Segment, 1, 1), result...)
 
+	i := new(BinaryInteger)
+	i.complement = generateComplement(result, sign)
 	return i, nil
 }
 
-func (b1 *BinaryInteger) Negative() *BinaryInteger {
+func (b *BinaryInteger) Negative() *BinaryInteger {
 	i := new(BinaryInteger)
-	i.complement = generateNegative(b1.complement)
+	i.complement = generateNegative(b.complement)
 	return i
 }
 
-func (b1 *BinaryInteger) Abs() string {
-	if signNegative == getSign(b1.complement) {
-		return b1.Negative().Abs()
-	}
-	m := make(map[string]byte)
-	for index, item := range digitBinaries {
-		m[item] = '0' + byte(index)
-	}
-
-	complement := b1.complement[1:]
-	// 2^3.3 Is about 9.8 so That the Number of Digits of Binaries Is about 3.3 Times of That of Decimals on Average
-	decLength := int(float64(len(complement))/3.3) + 1 // Add 1 in Case of Tolerance
-	decBytes := make([]byte, decLength, decLength)
-	var q string
-	var r string
-	var index int
-	for n := decLength - 1; n >= 0; n-- {
-		index = n
-		q, r = unsignedBinaryDivision(complement, ten)
-		decBytes[n] = m[r]
-		if "0" == q {
-			break
-		}
-		complement = q
-	}
-	result := decBytes[index:]
-	return *(*string)(unsafe.Pointer(&result))
+func segmentAddition(s1 Segment, s2 Segment, carry DoubleSegment) (Segment, DoubleSegment) { // Sum, Carry
+	sum := DoubleSegment(s1) + DoubleSegment(s2) + carry
+	return Segment(sum & segmentMask), (sum >> segmentLength) & segmentMask
 }
 
-func (b1 *BinaryInteger) Add(b2 *BinaryInteger) *BinaryInteger {
-	result := new(BinaryInteger)
-	result.complement = shrink(complementBinaryAddition(b1.complement, b2.complement))
-
-	return result
+func segmentSubtraction(s1 Segment, s2 Segment, carry DoubleSegment) (Segment, DoubleSegment) { // Difference, Carry
+	difference := DoubleSegment(s1) + carryThreshold - DoubleSegment(s2) - carry
+	return Segment(difference % carryThreshold), 1 - difference/carryThreshold
 }
 
-func (b1 *BinaryInteger) Subtract(b2 *BinaryInteger) *BinaryInteger {
-	return b1.Add(b2.Negative())
-}
-
-func (b1 *BinaryInteger) Multiply(b2 *BinaryInteger) *BinaryInteger {
-	result := new(BinaryInteger)
-	result.complement = complementBinaryMultiplication(b1.complement, b2.complement)
-	return result
-}
-
-func generateComplement(original string, sign byte) string {
-	if signPositive == sign {
-		return original
-	}
-	return generateNegative(original)
-}
-
-func generateNegative(binaryCode string) string {
-	length := len(binaryCode)
-	bits := make([]byte, length, length)
-	var diff byte
-	var carry byte = 0
-	for m := length - 1; m >= 0; m-- {
-		diff, carry = bitwiseSubtraction(0, binaryCode[m]-'0', carry)
-		bits[m] = '0' + diff
-	}
-	return *(*string)(unsafe.Pointer(&bits))
+func segmentMultiplication(s1 Segment, s2 Segment, carry DoubleSegment) (Segment, DoubleSegment) { // Product, Carry
+	product := DoubleSegment(s1)*DoubleSegment(s2) + carry
+	return Segment(product & segmentMask), (product >> segmentLength) & segmentMask
 }
 
 func bigger(a1 int, a2 int) int {
@@ -133,227 +85,91 @@ func bigger(a1 int, a2 int) int {
 	return a2
 }
 
-func bitwiseAddition(bit1 byte, bit2 byte, carry byte) (byte, byte) { // Sum, Carry
-	result := bit1 + bit2 + carry
-	return result % 2, result / 2
-}
-
-func bitwiseSubtraction(bit1 byte, bit2 byte, carry byte) (byte, byte) {
-	result := bit1 - bit2 - carry + 2
-	return result % 2, 1 - result/2
-}
-
-func unsignedBinaryAddition(b1 string, b2 string) string {
+func unsignedAddition(b1 []Segment, b2 []Segment) []Segment {
 	l1 := len(b1)
 	l2 := len(b2)
 	l := bigger(l1, l2)
 
+	var s1 Segment
+	var s2 Segment
 	var index1 int
 	var index2 int
-	var bit1 byte
-	var bit2 byte
-	var sum byte
-	var carry byte = 0
 
-	result := make([]byte, l, l)
-
+	result := make([]Segment, l+1, l+1)
+	var sum Segment
+	var carry DoubleSegment = 0
 	for m := 1; m <= l; m++ {
 		index1 = l1 - m
 		if index1 >= 0 {
-			bit1 = b1[index1] - '0'
+			s1 = b1[index1]
 		} else {
-			bit1 = 0
+			s1 = 0
 		}
+
 		index2 = l2 - m
 		if index2 >= 0 {
-			bit2 = b2[index2] - '0'
+			s2 = b2[index2]
 		} else {
-			bit2 = 0
+			s2 = 0
 		}
-		sum, carry = bitwiseAddition(bit1, bit2, carry)
-		result[l-m] = '0' + sum
+		sum, carry = segmentAddition(s1, s2, carry)
+		result[l+1-m] = sum
 	}
 	if carry > 0 {
-		return "1" + *(*string)(unsafe.Pointer(&result))
+		result[0] = Segment(carry)
+		return result
 	}
-	return *(*string)(unsafe.Pointer(&result))
+	return result[1:]
 }
 
-func complementBinaryAddition(b1 string, b2 string) string {
-	l1 := len(b1)
-	l2 := len(b2)
-	l := bigger(l1, l2) + 1
-
-	var index1 int
-	var index2 int
-	var bit1 byte
-	var bit2 byte
-	var sum byte
-	var carry byte = 0
-
-	result := make([]byte, l, l)
-
-	for m := 1; m <= l; m++ {
-		index1 = l1 - m
-		if index1 >= 0 {
-			bit1 = b1[index1] - '0'
-		} else {
-			bit1 = b1[0] - '0'
-		}
-		index2 = l2 - m
-		if index2 >= 0 {
-			bit2 = b2[index2] - '0'
-		} else {
-			bit2 = b2[0] - '0'
-		}
-		sum, carry = bitwiseAddition(bit1, bit2, carry)
-		result[l-m] = '0' + sum
-	}
-	return *(*string)(unsafe.Pointer(&result))
-}
-
-func unsignedBinaryMultiplication(b1 string, b2 string) string {
-	l2 := len(b2)
-
-	result := ""
-
+func unsignedMultiplication(s1 []Segment, s2 []Segment) []Segment {
+	l2 := len(s2)
+	result := make([]Segment, 0, 0)
 	for m := 0; m < l2; m++ {
-		if '1' == b2[m] {
-			result = unsignedBinaryAddition(result+"0", b1)
-		} else {
-			result = result + "0"
-		}
+		result = unsignedAddition(shiftSegmentL(result, 1), generatePartialProduct(s1, s2[m]))
 	}
 	return result
 }
 
-func complementBinaryMultiplication(b1 string, b2 string) string {
-	l2 := len(b2)
+func generatePartialProduct(s1 []Segment, s2 Segment) []Segment {
+	length := len(s1)
+	result := make([]Segment, length+1, length+1)
 
-	result := ""
-	if signNegative == getSign(b2) {
-		result = generateNegative(b1)
-	}
+	var product Segment
+	var carry DoubleSegment = 0
 
-	for m := 1; m < l2; m++ {
-		if '1' == b2[m] {
-			result = complementBinaryAddition(result+"0", b1)
-		} else {
-			result = result + "0"
-		}
+	for m := length; m >= 1; m-- {
+		product, carry = segmentMultiplication(s1[m-1], s2, carry)
+		result[m] = product
 	}
-	return shrink(result)
+	if carry > 0 {
+		result[0] = Segment(carry)
+		return result
+	}
+	return result[1:]
 }
 
-func unsignedBinaryDivision(b1 string, b2 string) (string, string) { // Quotient, Remainder
-	c := unsignedBinaryComparison(b1, b2)
-	if c < 0 {
-		return "0", b1
+func generateComplement(s []Segment, sign Segment) []Segment {
+	if signPositive == sign {
+		return s
 	}
-
-	l1 := len(b1)
-	l2 := len(b2)
-	if l1 == l2 {
-		return "1", shrink0(complementBinaryAddition("0"+b1, generateNegative("0"+b2)))
-	}
-	q, r := findPartialQuotient(b1, b2)
-	var l int
-	qba := *(*[]byte)(unsafe.Pointer(&q)) // Quotient Byte Array
-	ql := len(qba)
-	for unsignedBinaryComparison(r, b2) >= 0 {
-		l, r = findPartialQuotientLength(r, b2)
-		qba[ql-l] = '1'
-	}
-	return *(*string)(unsafe.Pointer(&qba)), r
+	return generateNegative(s)
 }
 
-func findPartialQuotient(b1 string, b2 string) (string, string) { // Partial Quotient, Remainder
-	l1 := len(b1)
-	l2 := len(b2)
-	l := l1 - l2
-	q := shiftL("1", l)
-	p := shiftL(b2, l)
-	c := unsignedBinaryComparison(b1, p)
-	if c < 0 {
-		q = shiftR(q, 1)
-		p = shiftR(p, 1)
+func generateNegative(s []Segment) []Segment {
+	length := len(s)
+	sum := make([]Segment, length, length)
+	sum[0] = 2
+	result := make([]Segment, length, length)
+	var difference Segment
+	var carry DoubleSegment = 0
+	for m := length - 1; m >= 0; m-- {
+		difference, carry = segmentSubtraction(sum[m], s[m], carry)
+		result[m] = difference
 	}
-	return q, shrink0(complementBinaryAddition("0"+b1, generateNegative("0"+p)))
+	return result
 }
 
-func findPartialQuotientLength(b1 string, b2 string) (int, string) { // The Length of the Partial Quotient, Remainder
-	l1 := len(b1)
-	l2 := len(b2)
-	l := l1 - l2
-	p := shiftL(b2, l)
-	c := unsignedBinaryComparison(b1, p)
-	if c < 0 {
-		p = shiftR(p, 1)
-		l = l - 1
-	}
-	return l + 1, shrink0(complementBinaryAddition("0"+b1, generateNegative("0"+p)))
-}
-
-func unsignedBinaryComparison(b1 string, b2 string) int {
-	l1 := len(b1)
-	l2 := len(b2)
-	if l1 < l2 {
-		return -1
-	} else if l1 > l2 {
-		return 1
-	}
-	for m := 0; m < l1; m++ {
-		if b1[m] == b2[m] {
-			continue
-		}
-		return int(b1[m]) - int(b2[m])
-	}
-	return 0
-}
-
-func shrink(complement string) string {
-	length := len(complement)
-	var found = false
-	var index int
-	for m := 0; m < length; m++ {
-		if complement[m] != complement[0] {
-			index = m
-			found = true
-			break
-		}
-	}
-	if found {
-		return complement[index-1:]
-	}
-	return complement[length-2:]
-}
-
-func shrink0(binary string) string {
-	length := len(binary)
-	for m := 0; m < length; m++ {
-		if '1' == binary[m] {
-			return binary[m:]
-		}
-	}
-	return "0"
-}
-
-func getSign(complement string) byte {
-	return complement[0] - '0'
-}
-
-func shiftL(b1 string, length int) string {
-	zeros := make([]byte, length, length)
-	for m := 0; m < length; m++ {
-		zeros[m] = '0'
-	}
-	return b1 + *(*string)(unsafe.Pointer(&zeros))
-}
-
-func shiftR(b1 string, length int) string {
-	l := len(b1)
-	if length >= l {
-		return "0"
-	}
-	return b1[0 : l-length]
+func shiftSegmentL(s []Segment, count int) []Segment {
+	return append(s, make([]Segment, count, count)...)
 }
