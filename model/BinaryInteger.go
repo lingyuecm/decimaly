@@ -57,10 +57,68 @@ func CreateBigInteger(value string) (*BinaryInteger, error) {
 	return i, nil
 }
 
-func (b *BinaryInteger) Negative() *BinaryInteger {
+func (b1 *BinaryInteger) Negative() *BinaryInteger {
 	i := new(BinaryInteger)
-	i.complement = generateNegative(b.complement)
+	i.complement = generateNegative(b1.complement)
 	return i
+}
+
+func (b1 *BinaryInteger) Add(b2 *BinaryInteger) *BinaryInteger {
+	i := new(BinaryInteger)
+	i.complement = adjustComplement(complementAddition(b1.complement, b2.complement))
+	return i
+}
+
+func (b1 *BinaryInteger) Subtract(b2 *BinaryInteger) *BinaryInteger {
+	return b1.Add(b2.Negative())
+}
+
+func complementAddition(sa1 []Segment, sa2 []Segment) []Segment {
+	l1 := len(sa1)
+	l2 := len(sa2)
+	l := bigger(l1, l2)
+
+	var s1 Segment
+	var s2 Segment
+	var index1 int
+	var index2 int
+
+	expandedSign1 := expandSign(sa1[0])
+	expandedSign2 := expandSign(sa2[0])
+	result := make([]Segment, l, l)
+	var sum Segment
+	var carry DoubleSegment = 0
+	for m := 1; m <= l; m++ {
+		index1 = l1 - m
+		if index1 > 0 {
+			s1 = sa1[index1]
+		} else {
+			s1 = expandedSign1
+		}
+
+		index2 = l2 - m
+		if index2 > 0 {
+			s2 = sa2[index2]
+		} else {
+			s2 = expandedSign2
+		}
+		sum, carry = segmentAddition(s1, s2, carry)
+		result[l-m] = sum
+	}
+	return result
+}
+
+func adjustComplement(sa []Segment) []Segment {
+	result := make([]Segment, 1, 1)
+	result[0] = sa[0] >> (segmentLength - 1)
+	expandedSign := expandSign(result[0])
+	length := len(sa)
+	for m := 0; m < length; m++ {
+		if sa[m] != expandedSign {
+			return append(result, sa[m:]...)
+		}
+	}
+	return append(result, expandedSign)
 }
 
 func segmentAddition(s1 Segment, s2 Segment, carry DoubleSegment) (Segment, DoubleSegment) { // Sum, Carry
@@ -167,7 +225,12 @@ func generateNegative(s []Segment) []Segment {
 		difference, carry = segmentSubtraction(sum[m], s[m], carry)
 		result[m] = difference
 	}
+	result[0] = result[0] & 1 // -0
 	return result
+}
+
+func expandSign(sign Segment) Segment {
+	return Segment((carryThreshold - DoubleSegment(sign)) % carryThreshold)
 }
 
 func shiftSegmentL(s []Segment, count int) []Segment {
