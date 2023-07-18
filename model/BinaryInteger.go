@@ -143,9 +143,9 @@ func bigger(a1 int, a2 int) int {
 	return a2
 }
 
-func unsignedAddition(b1 []Segment, b2 []Segment) []Segment {
-	l1 := len(b1)
-	l2 := len(b2)
+func unsignedAddition(sa1 []Segment, sa2 []Segment) []Segment {
+	l1 := len(sa1)
+	l2 := len(sa2)
 	l := bigger(l1, l2)
 
 	var s1 Segment
@@ -159,14 +159,14 @@ func unsignedAddition(b1 []Segment, b2 []Segment) []Segment {
 	for m := 1; m <= l; m++ {
 		index1 = l1 - m
 		if index1 >= 0 {
-			s1 = b1[index1]
+			s1 = sa1[index1]
 		} else {
 			s1 = 0
 		}
 
 		index2 = l2 - m
 		if index2 >= 0 {
-			s2 = b2[index2]
+			s2 = sa2[index2]
 		} else {
 			s2 = 0
 		}
@@ -180,24 +180,24 @@ func unsignedAddition(b1 []Segment, b2 []Segment) []Segment {
 	return result[1:]
 }
 
-func unsignedMultiplication(s1 []Segment, s2 []Segment) []Segment {
-	l2 := len(s2)
+func unsignedMultiplication(sa1 []Segment, sa2 []Segment) []Segment {
+	l2 := len(sa2)
 	result := make([]Segment, 0, 0)
 	for m := 0; m < l2; m++ {
-		result = unsignedAddition(shiftSegmentL(result, 1), generatePartialProduct(s1, s2[m]))
+		result = unsignedAddition(shiftSegmentL(result, 1), generatePartialProduct(sa1, sa2[m]))
 	}
 	return result
 }
 
-func generatePartialProduct(s1 []Segment, s2 Segment) []Segment {
-	length := len(s1)
+func generatePartialProduct(sa1 []Segment, sa2 Segment) []Segment {
+	length := len(sa1)
 	result := make([]Segment, length+1, length+1)
 
 	var product Segment
 	var carry DoubleSegment = 0
 
 	for m := length; m >= 1; m-- {
-		product, carry = segmentMultiplication(s1[m-1], s2, carry)
+		product, carry = segmentMultiplication(sa1[m-1], sa2, carry)
 		result[m] = product
 	}
 	if carry > 0 {
@@ -207,22 +207,22 @@ func generatePartialProduct(s1 []Segment, s2 Segment) []Segment {
 	return result[1:]
 }
 
-func generateComplement(s []Segment, sign Segment) []Segment {
+func generateComplement(sa []Segment, sign Segment) []Segment {
 	if signPositive == sign {
-		return s
+		return sa
 	}
-	return generateNegative(s)
+	return generateNegative(sa)
 }
 
-func generateNegative(s []Segment) []Segment {
-	length := len(s)
+func generateNegative(sa []Segment) []Segment {
+	length := len(sa)
 	sum := make([]Segment, length, length)
 	sum[0] = 2
 	result := make([]Segment, length, length)
 	var difference Segment
 	var carry DoubleSegment = 0
 	for m := length - 1; m >= 0; m-- {
-		difference, carry = segmentSubtraction(sum[m], s[m], carry)
+		difference, carry = segmentSubtraction(sum[m], sa[m], carry)
 		result[m] = difference
 	}
 	result[0] = result[0] & 1 // -0
@@ -233,6 +233,6 @@ func expandSign(sign Segment) Segment {
 	return Segment((carryThreshold - DoubleSegment(sign)) % carryThreshold)
 }
 
-func shiftSegmentL(s []Segment, count int) []Segment {
-	return append(s, make([]Segment, count, count)...)
+func shiftSegmentL(sa []Segment, count int) []Segment {
+	return append(sa, make([]Segment, count, count)...)
 }
