@@ -73,6 +73,27 @@ func (b1 *BinaryInteger) Subtract(b2 *BinaryInteger) *BinaryInteger {
 	return b1.Add(b2.Negative())
 }
 
+func (b1 *BinaryInteger) Multiply(b2 *BinaryInteger) *BinaryInteger {
+	sa1 := b1.complement
+	sa2 := b2.complement
+	sign := (sa1[0] + sa2[0]) & 1
+
+	if sa1[0] > 0 {
+		sa1 = generateNegative(sa1)
+	}
+	if sa2[0] > 0 {
+		sa2 = generateNegative(sa2)
+	}
+	sa := append(make([]Segment, 1, 1), shrinkUnsigned(unsignedMultiplication(sa1, sa2))...)
+	if sign > 0 {
+		sa = generateNegative(sa)
+	}
+
+	i := new(BinaryInteger)
+	i.complement = sa
+	return i
+}
+
 func complementAddition(sa1 []Segment, sa2 []Segment) []Segment {
 	l1 := len(sa1)
 	l2 := len(sa2)
@@ -119,6 +140,19 @@ func adjustComplement(sa []Segment) []Segment {
 		}
 	}
 	return append(result, expandedSign)
+}
+
+func shrinkUnsigned(sa []Segment) []Segment {
+	if sa[0] > 0 {
+		return sa
+	}
+	length := len(sa)
+	for m := 1; m < length; m++ {
+		if sa[m] > 0 {
+			return sa[m:]
+		}
+	}
+	return make([]Segment, 1, 1) // 0
 }
 
 func segmentAddition(s1 Segment, s2 Segment, carry DoubleSegment) (Segment, DoubleSegment) { // Sum, Carry
