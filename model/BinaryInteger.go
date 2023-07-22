@@ -94,6 +94,39 @@ func (b1 *BinaryInteger) Multiply(b2 *BinaryInteger) *BinaryInteger {
 	return i
 }
 
+func (b1 *BinaryInteger) DividedBy(b2 *BinaryInteger) (*BinaryInteger, *BinaryInteger, error) {
+	if len(b2.complement) == 2 && b2.complement[0] == 0 && b2.complement[1] == 0 {
+		return nil, nil, errors.New(fmt.Sprintf("Cannot Be Divided by Zero"))
+	}
+
+	sa1 := b1.complement
+	sa2 := b2.complement
+	sign := (sa1[0] + sa2[0]) & 1
+
+	if sa1[0] > 0 {
+		sa1 = generateNegative(sa1)
+	}
+	if sa2[0] > 0 {
+		sa2 = generateNegative(sa2)
+	}
+	q, r := unsignedDivision(shrinkUnsigned(sa1), shrinkUnsigned(sa2))
+	q = append(make([]Segment, 1, 1), q...)
+	if sign > 0 {
+		q = generateNegative(q)
+	}
+	r = append(make([]Segment, 1, 1), r...)
+	if b1.complement[0] > 0 {
+		r = generateNegative(r)
+	}
+	quotient := new(BinaryInteger)
+	quotient.complement = q
+
+	remainder := new(BinaryInteger)
+	remainder.complement = r
+
+	return quotient, remainder, nil
+}
+
 func complementAddition(sa1 []Segment, sa2 []Segment) []Segment {
 	l1 := len(sa1)
 	l2 := len(sa2)
@@ -221,6 +254,161 @@ func unsignedMultiplication(sa1 []Segment, sa2 []Segment) []Segment {
 		result = unsignedAddition(shiftSegmentL(result, 1), generatePartialProduct(sa1, sa2[m]))
 	}
 	return result
+}
+
+func unsignedDivision(sa1 []Segment, sa2 []Segment) ([]Segment, []Segment) { // Quotient, Remainder
+	c := unsignedComparison(sa1, sa2)
+	if c < 0 {
+		return make([]Segment, 1, 1), sa1
+	} else if c == 0 {
+		q := make([]Segment, 1, 1)
+		q[0] = 1
+		return q, make([]Segment, 1, 1)
+	}
+
+	l1 := len(sa1)
+	l2 := len(sa2)
+	l := l1 - l2 + 1
+	result := make([]Segment, l, l)
+
+	index1 := l2 - 1
+	index := 0
+	var q Segment
+	r := sa1[0:index1]
+	for {
+		if index1 >= l1 {
+			break
+		}
+		q, r = findPartialQuotient(append(r, sa1[index1]), sa2)
+		if len(r) == 1 && r[0] == 0 {
+			r = make([]Segment, 0, 0)
+		}
+		result[index] = q
+		index++
+
+		index1++
+	}
+	if len(r) == 0 {
+		r = make([]Segment, 1, 1)
+	}
+	return shrinkUnsigned(result[0:index]), r
+}
+
+func unsignedComparison(sa1 []Segment, sa2 []Segment) int64 {
+	l1 := len(sa1)
+	l2 := len(sa2)
+	if l1 > l2 {
+		return 1
+	} else if l1 < l2 {
+		return -1
+	}
+	// l1 == l2
+	for m := 0; m < l1; m++ {
+		if sa1[m] != sa2[m] {
+			return int64(sa1[m]) - int64(sa2[m])
+		}
+	}
+	return 0
+}
+
+func findPartialQuotient(sa1 []Segment, sa2 []Segment) (Segment, []Segment) { // The Segment of the Quotient, Remainder
+	c := unsignedComparison(sa1, sa2)
+	if c < 0 {
+		return 0, sa1
+	} else if c == 0 {
+		return 1, make([]Segment, 1, 1)
+	}
+
+	var q Segment = 0
+	var qb Segment
+	var r = sa1
+	for {
+		qb, r = findPartialQuotientBit(r, sa2)
+		q = q + qb
+		if unsignedComparison(r, sa2) < 0 {
+			return q, r
+		}
+	}
+}
+
+func findPartialQuotientBit(sa1 []Segment, sa2 []Segment) (Segment, []Segment) { // The Bit of the Segment, Remainder
+	bl1 := unsignedBitLength(sa1)
+	bl2 := unsignedBitLength(sa2)
+	q := shiftBitsL(sa2, bl1-bl2)
+	c := unsignedComparison(sa1, q)
+	if c >= 0 {
+		return 1 << (bl1 - bl2), unsignedSubtraction(sa1, q)
+	}
+	return 1 << (bl1 - bl2 - 1), unsignedSubtraction(sa1, shiftBitR(q))
+}
+
+func unsignedSubtraction(sa1 []Segment, sa2 []Segment) []Segment {
+	l1 := len(sa1)
+	l2 := len(sa2)
+	l := bigger(l1, l2)
+	result := make([]Segment, l, l)
+	var carry DoubleSegment = 0
+	var s1 Segment
+	var s2 Segment
+	var index1 int
+	var index2 int
+	for m := 1; m <= l; m++ {
+		index1 = l1 - m
+		if index1 >= 0 {
+			s1 = sa1[index1]
+		} else {
+			s1 = 0
+		}
+		index2 = l2 - m
+		if index2 >= 0 {
+			s2 = sa2[index2]
+		} else {
+			s2 = 0
+		}
+		result[l-m], carry = segmentSubtraction(s1, s2, carry)
+	}
+	return shrinkUnsigned(result)
+}
+
+func unsignedBitLength(sa []Segment) uint64 {
+	s := sa[0]
+	if 0 == s {
+		return 0
+	}
+
+	l := segmentLength
+	ds := DoubleSegment(s)
+	m := 0
+	for {
+		ds = ds << 1
+		if ds&carryThreshold > 0 {
+			return uint64(l-m) + uint64(len(sa)-1)*uint64(segmentLength)
+		}
+		m = m + 1
+	}
+}
+
+func shiftBitsL(sa []Segment, bitCount uint64) []Segment {
+	sl := uint64(segmentLength)
+	if bitCount == 0 {
+		return sa
+	} else if bitCount < sl {
+		var factor Segment = 1 << bitCount
+		return generatePartialProduct(sa, factor)
+	} else {
+		return shiftBitsL(shiftSegmentL(sa, int(bitCount/sl)), bitCount%sl)
+	}
+}
+
+func shiftBitR(sa []Segment) []Segment {
+	l := len(sa)
+	result := make([]Segment, l, l)
+	var r Segment = 0
+	for m := 0; m < l; m++ {
+		result[m] = (r << (segmentLength - 1)) + sa[m]/2
+		r = sa[m] % 2
+	}
+	return shrinkUnsigned(result)
 }
 
 func generatePartialProduct(sa1 []Segment, sa2 Segment) []Segment {
