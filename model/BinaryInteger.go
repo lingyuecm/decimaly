@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 type Segment = uint8
@@ -125,6 +126,55 @@ func (b1 *BinaryInteger) DividedBy(b2 *BinaryInteger) (*BinaryInteger, *BinaryIn
 	remainder.complement = r
 
 	return quotient, remainder, nil
+}
+
+func (b1 *BinaryInteger) GcdWith(b2 *BinaryInteger) *BinaryInteger {
+	sa1 := b1.complement
+	if sa1[0] > 0 {
+		sa1 = generateNegative(sa1)
+	}
+	sa1 = shrinkUnsigned(sa1)
+
+	sa2 := b2.complement
+	if sa2[0] > 0 {
+		sa2 = generateNegative(sa2)
+	}
+	sa2 = shrinkUnsigned(sa2)
+
+	_, r := unsignedDivision(sa1, sa2)
+	for {
+		if len(r) == 1 && r[0] == 0 {
+			i := new(BinaryInteger)
+			i.complement = append(make([]Segment, 1, 1), sa2...)
+			return i
+		}
+		sa1 = sa2
+		sa2 = r
+		_, r = unsignedDivision(sa1, sa2)
+	}
+}
+
+func (b1 *BinaryInteger) DecimalValue() string {
+	sa := b1.complement
+	sign := ""
+	if sa[0] > 0 {
+		sign = "-"
+		sa = generateNegative(sa)
+	}
+	divider := make([]Segment, 1, 1)
+	divider[0] = ten
+	result := ""
+	var q []Segment
+	var r []Segment
+	for {
+		q, r = unsignedDivision(sa, divider)
+		result = strconv.FormatUint(uint64(r[0]), int(ten)) + result
+		if q[0] == 0 {
+			break
+		}
+		sa = q
+	}
+	return sign + result
 }
 
 func complementAddition(sa1 []Segment, sa2 []Segment) []Segment {
