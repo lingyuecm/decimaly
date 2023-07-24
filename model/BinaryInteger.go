@@ -3,7 +3,8 @@ package model
 import (
 	"errors"
 	"fmt"
-	"strconv"
+	"math"
+	"unsafe"
 )
 
 type Segment = uint8
@@ -17,6 +18,8 @@ const ten Segment = 10
 
 const signPositive Segment = 0
 const signNegative Segment = 1
+
+var expandFactor = math.Log(float64(carryThreshold)) / math.Log(float64(ten))
 
 type BinaryInteger struct {
 	complement []Segment
@@ -48,7 +51,7 @@ func CreateBigInteger(value string) (*BinaryInteger, error) {
 		} else {
 			found = true
 		}
-		digit[0] = value[m] - '0'
+		digit[0] = Segment(value[m] - '0')
 		result = unsignedAddition(generatePartialProduct(result, ten), digit)
 	}
 	result = append(make([]Segment, 1, 1), result...)
@@ -143,7 +146,7 @@ func (b1 *BinaryInteger) GcdWith(b2 *BinaryInteger) *BinaryInteger {
 
 	_, r := unsignedDivision(sa1, sa2)
 	for {
-		if len(r) == 1 && r[0] == 0 {
+		if r[0] == 0 {
 			i := new(BinaryInteger)
 			i.complement = append(make([]Segment, 1, 1), sa2...)
 			return i
@@ -163,18 +166,26 @@ func (b1 *BinaryInteger) DecimalValue() string {
 	}
 	divider := make([]Segment, 1, 1)
 	divider[0] = ten
-	result := ""
+	length := int(float64(len(sa))*expandFactor) + 2
+	result := make([]byte, length, length)
+	index := length
 	var q []Segment
 	var r []Segment
 	for {
 		q, r = unsignedDivision(sa, divider)
-		result = strconv.FormatUint(uint64(r[0]), int(ten)) + result
+		index--
+		result[index] = '0' + uint8(r[0])
 		if q[0] == 0 {
 			break
 		}
 		sa = q
 	}
-	return sign + result
+	if len(sign) > 0 {
+		index--
+		result[index] = sign[0]
+	}
+	result = result[index:]
+	return *(*string)(unsafe.Pointer(&result))
 }
 
 func complementAddition(sa1 []Segment, sa2 []Segment) []Segment {
@@ -307,13 +318,8 @@ func unsignedMultiplication(sa1 []Segment, sa2 []Segment) []Segment {
 }
 
 func unsignedDivision(sa1 []Segment, sa2 []Segment) ([]Segment, []Segment) { // Quotient, Remainder
-	c := unsignedComparison(sa1, sa2)
-	if c < 0 {
+	if len(sa1) < len(sa2) {
 		return make([]Segment, 1, 1), sa1
-	} else if c == 0 {
-		q := make([]Segment, 1, 1)
-		q[0] = 1
-		return q, make([]Segment, 1, 1)
 	}
 
 	l1 := len(sa1)
@@ -330,7 +336,7 @@ func unsignedDivision(sa1 []Segment, sa2 []Segment) ([]Segment, []Segment) { // 
 			break
 		}
 		q, r = findPartialQuotient(append(r, sa1[index1]), sa2)
-		if len(r) == 1 && r[0] == 0 {
+		if r[0] == 0 {
 			r = make([]Segment, 0, 0)
 		}
 		result[index] = q
