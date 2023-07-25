@@ -39,20 +39,9 @@ func CreateBigInteger(value string) (*BinaryInteger, error) {
 		sign = signNegative
 	}
 
-	result := make([]Segment, 1, 1)
-	digit := make([]Segment, 1, 1)
-	var found = false
-	for m := startIndex; m < length; m++ {
-		if value[m] < '0' || value[m] > '9' {
-			return nil, errors.New(fmt.Sprintf("Invalid Digit at %d: %c", m, value[m]))
-		}
-		if '0' == value[m] && !found {
-			continue
-		} else {
-			found = true
-		}
-		digit[0] = Segment(value[m] - '0')
-		result = unsignedAddition(generatePartialProduct(result, ten), digit)
+	result, err := createUnsigned(value[startIndex:])
+	if nil != err {
+		return nil, err
 	}
 	result = append(make([]Segment, 1, 1), result...)
 
@@ -186,6 +175,26 @@ func (b1 *BinaryInteger) DecimalValue() string {
 	}
 	result = result[index:]
 	return *(*string)(unsafe.Pointer(&result))
+}
+
+func createUnsigned(value string) ([]Segment, error) {
+	length := len(value)
+	result := make([]Segment, 1, 1)
+	digit := make([]Segment, 1, 1)
+	var found = false
+	for m := 0; m < length; m++ {
+		if value[m] < '0' || value[m] > '9' {
+			return nil, errors.New(fmt.Sprintf("Invalid Digit at %d: %c", m, value[m]))
+		}
+		if '0' == value[m] && !found {
+			continue
+		} else {
+			found = true
+		}
+		digit[0] = Segment(value[m] - '0')
+		result = unsignedAddition(generatePartialProduct(result, ten), digit)
+	}
+	return result, nil
 }
 
 func complementAddition(sa1 []Segment, sa2 []Segment) []Segment {
