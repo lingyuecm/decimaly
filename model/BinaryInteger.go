@@ -27,7 +27,7 @@ type BinaryInteger struct {
 	complement []Segment
 }
 
-func CreateBigInteger(value string) (*BinaryInteger, error) {
+func CreateBinaryInteger(value string) (*BinaryInteger, error) {
 	length := len(value)
 	if 0 == length {
 		return nil, errors.New(fmt.Sprintf("Empty String"))
