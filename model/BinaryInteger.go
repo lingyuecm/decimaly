@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"unsafe"
 )
 
@@ -18,6 +19,7 @@ const ten Segment = 10
 
 const signPositive Segment = 0
 const signNegative Segment = 1
+const maxIndex10 = "10000000000000000000"
 
 var expandFactor = math.Log(float64(carryThreshold)) / math.Log(float64(ten))
 
@@ -153,19 +155,29 @@ func (b1 *BinaryInteger) DecimalValue() string {
 		sign = "-"
 		sa = generateNegative(sa)
 	}
-	divider := make([]Segment, 1, 1)
-	divider[0] = ten
+	sa = shrinkUnsigned(sa)
+	divider, _ := createUnsigned(maxIndex10)
 	length := int(float64(len(sa))*expandFactor) + 2
 	result := make([]byte, length, length)
 	index := length
+	var group string
+	var gl int
 	var q []Segment
 	var r []Segment
 	for {
 		q, r = unsignedDivision(sa, divider)
-		index--
-		result[index] = '0' + uint8(r[0])
+		group = strconv.FormatUint(getUint64(r), 10)
+		gl = len(group)
+		for m := gl - 1; m >= 0; m-- {
+			index--
+			result[index] = group[m]
+		}
 		if q[0] == 0 {
 			break
+		}
+		for m := gl; m < 19; m++ {
+			index--
+			result[index] = '0'
 		}
 		sa = q
 	}
@@ -522,4 +534,13 @@ func expandSign(sign Segment) Segment {
 
 func shiftSegmentL(sa []Segment, count int) []Segment {
 	return append(sa, make([]Segment, count, count)...)
+}
+
+func getUint64(sa []Segment) uint64 {
+	carryThreshold64 := uint64(carryThreshold)
+	var sum uint64 = 0
+	for _, s := range sa {
+		sum = sum*carryThreshold64 + uint64(s)
+	}
+	return sum
 }
