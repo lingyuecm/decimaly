@@ -45,7 +45,7 @@ func CreateBinaryInteger(value string) (*BinaryInteger, error) {
 	if nil != err {
 		return nil, err
 	}
-	result = append(make([]Segment, 1, 1), result...)
+	result = append(make([]Segment, 1), result...)
 
 	i := new(BinaryInteger)
 	i.complement = generateComplement(result, sign)
@@ -79,7 +79,7 @@ func (b1 *BinaryInteger) Multiply(b2 *BinaryInteger) *BinaryInteger {
 	if sa2[0] > 0 {
 		sa2 = generateNegative(sa2)
 	}
-	sa := append(make([]Segment, 1, 1), shrinkUnsigned(unsignedMultiplication(sa1, sa2))...)
+	sa := append(make([]Segment, 1), shrinkUnsigned(unsignedMultiplication(sa1, sa2))...)
 	if sign > 0 {
 		sa = generateNegative(sa)
 	}
@@ -105,11 +105,11 @@ func (b1 *BinaryInteger) DividedBy(b2 *BinaryInteger) (*BinaryInteger, *BinaryIn
 		sa2 = generateNegative(sa2)
 	}
 	q, r := unsignedDivision(shrinkUnsigned(sa1), shrinkUnsigned(sa2))
-	q = append(make([]Segment, 1, 1), q...)
+	q = append(make([]Segment, 1), q...)
 	if sign > 0 {
 		q = generateNegative(q)
 	}
-	r = append(make([]Segment, 1, 1), r...)
+	r = append(make([]Segment, 1), r...)
 	if b1.complement[0] > 0 {
 		r = generateNegative(r)
 	}
@@ -139,7 +139,7 @@ func (b1 *BinaryInteger) GcdWith(b2 *BinaryInteger) *BinaryInteger {
 	for {
 		if r[0] == 0 {
 			i := new(BinaryInteger)
-			i.complement = append(make([]Segment, 1, 1), sa2...)
+			i.complement = append(make([]Segment, 1), sa2...)
 			return i
 		}
 		sa1 = sa2
@@ -158,7 +158,7 @@ func (b1 *BinaryInteger) DecimalValue() string {
 	sa = shrinkUnsigned(sa)
 	divider, _ := createUnsigned(maxIndex10)
 	length := int(float64(len(sa))*expandFactor) + 2
-	result := make([]byte, length, length)
+	result := make([]byte, length)
 	index := length
 	var group string
 	var gl int
