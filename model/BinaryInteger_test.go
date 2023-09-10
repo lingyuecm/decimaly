@@ -25,8 +25,8 @@ func TestBinaryInteger_Negative(t *testing.T) {
 }
 
 func TestBinaryInteger_Add(t *testing.T) {
-	b1, _ := CreateBinaryInteger("123")
-	b2, _ := CreateBinaryInteger("4567")
+	b1, _ := CreateBinaryInteger("-30498579023579024377")
+	b2, _ := CreateBinaryInteger("30498579023579024376")
 	b3 := b1.Add(b2)
 	t.Log(b3.DecimalValue())
 }
@@ -54,8 +54,8 @@ func TestBinaryInteger_DividedBy(t *testing.T) {
 }
 
 func TestBinaryInteger_GcdWith(t *testing.T) {
-	b1, _ := CreateBinaryInteger("123")
-	b2, _ := CreateBinaryInteger("4567")
+	b1, _ := CreateBinaryInteger("-123")
+	b2, _ := CreateBinaryInteger("82")
 	b3 := b1.GcdWith(b2)
 	t.Log(b3.DecimalValue())
 }
