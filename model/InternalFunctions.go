@@ -6,8 +6,12 @@ import (
 )
 
 func createUnsigned(value string) ([]Segment, error) {
+	return createUnsignedBasedOn(value, make([]Segment, 1))
+}
+
+func createUnsignedBasedOn(value string, baseValue []Segment) ([]Segment, error) {
 	length := len(value)
-	result := make([]Segment, 1)
+	result := baseValue
 	digit := make([]Segment, 1)
 	var nonZeroIndex int
 	for m := 0; m < length; m++ {
@@ -38,7 +42,7 @@ func complementAddition(sa1 []Segment, sa2 []Segment) []Segment {
 
 	expandedSign1 := expandSign(sa1[0])
 	expandedSign2 := expandSign(sa2[0])
-	result := make([]Segment, l, l)
+	result := make([]Segment, l)
 	var sum Segment
 	var carry DoubleSegment = 0
 	for m := 1; m <= l; m++ {
@@ -62,7 +66,7 @@ func complementAddition(sa1 []Segment, sa2 []Segment) []Segment {
 }
 
 func adjustComplement(sa []Segment) []Segment {
-	result := make([]Segment, 1, 1)
+	result := make([]Segment, 1)
 	result[0] = sa[0] >> (segmentLength - 1)
 	expandedSign := expandSign(result[0])
 	length := len(sa)
@@ -84,7 +88,7 @@ func shrinkUnsigned(sa []Segment) []Segment {
 			return sa[m:]
 		}
 	}
-	return make([]Segment, 1, 1) // 0
+	return make([]Segment, 1) // 0
 }
 
 func segmentAddition(s1 Segment, s2 Segment, carry DoubleSegment) (Segment, DoubleSegment) { // Sum, Carry
@@ -119,7 +123,7 @@ func unsignedAddition(sa1 []Segment, sa2 []Segment) []Segment {
 	var index1 int
 	var index2 int
 
-	result := make([]Segment, l+1, l+1)
+	result := make([]Segment, l+1)
 	var sum Segment
 	var carry DoubleSegment = 0
 	for m := 1; m <= l; m++ {
@@ -148,7 +152,7 @@ func unsignedAddition(sa1 []Segment, sa2 []Segment) []Segment {
 
 func unsignedMultiplication(sa1 []Segment, sa2 []Segment) []Segment {
 	l2 := len(sa2)
-	result := make([]Segment, 0, 0)
+	result := make([]Segment, 0)
 	for m := 0; m < l2; m++ {
 		result = unsignedAddition(shiftSegmentL(result, 1), generatePartialProduct(sa1, sa2[m]))
 	}
@@ -157,13 +161,13 @@ func unsignedMultiplication(sa1 []Segment, sa2 []Segment) []Segment {
 
 func unsignedDivision(sa1 []Segment, sa2 []Segment) ([]Segment, []Segment) { // Quotient, Remainder
 	if len(sa1) < len(sa2) {
-		return make([]Segment, 1, 1), sa1
+		return make([]Segment, 1), sa1
 	}
 
 	l1 := len(sa1)
 	l2 := len(sa2)
 	l := l1 - l2 + 1
-	result := make([]Segment, l, l)
+	result := make([]Segment, l)
 
 	index1 := l2 - 1
 	index := 0
@@ -175,7 +179,7 @@ func unsignedDivision(sa1 []Segment, sa2 []Segment) ([]Segment, []Segment) { // 
 		}
 		q, r = findPartialQuotient(append(r, sa1[index1]), sa2)
 		if r[0] == 0 {
-			r = make([]Segment, 0, 0)
+			r = make([]Segment, 0)
 		}
 		result[index] = q
 		index++
@@ -183,7 +187,7 @@ func unsignedDivision(sa1 []Segment, sa2 []Segment) ([]Segment, []Segment) { // 
 		index1++
 	}
 	if len(r) == 0 {
-		r = make([]Segment, 1, 1)
+		r = make([]Segment, 1)
 	}
 	return shrinkUnsigned(result[0:index]), r
 }
@@ -210,7 +214,7 @@ func findPartialQuotient(sa1 []Segment, sa2 []Segment) (Segment, []Segment) { //
 	if c < 0 {
 		return 0, sa1
 	} else if c == 0 {
-		return 1, make([]Segment, 1, 1)
+		return 1, make([]Segment, 1)
 	}
 
 	var q Segment = 0
@@ -240,7 +244,7 @@ func unsignedSubtraction(sa1 []Segment, sa2 []Segment) []Segment {
 	l1 := len(sa1)
 	l2 := len(sa2)
 	l := bigger(l1, l2)
-	result := make([]Segment, l, l)
+	result := make([]Segment, l)
 	var carry DoubleSegment = 0
 	var s1 Segment
 	var s2 Segment
@@ -296,7 +300,7 @@ func shiftBitsL(sa []Segment, bitCount uint64) []Segment {
 
 func shiftBitR(sa []Segment) []Segment {
 	l := len(sa)
-	result := make([]Segment, l, l)
+	result := make([]Segment, l)
 	var r Segment = 0
 	for m := 0; m < l; m++ {
 		result[m] = (r << (segmentLength - 1)) + sa[m]/2
@@ -307,7 +311,7 @@ func shiftBitR(sa []Segment) []Segment {
 
 func generatePartialProduct(sa1 []Segment, sa2 Segment) []Segment {
 	length := len(sa1)
-	result := make([]Segment, length+1, length+1)
+	result := make([]Segment, length+1)
 
 	var product Segment
 	var carry DoubleSegment = 0
@@ -332,9 +336,9 @@ func generateComplement(sa []Segment, sign Segment) []Segment {
 
 func generateNegative(sa []Segment) []Segment {
 	length := len(sa)
-	sum := make([]Segment, length, length)
+	sum := make([]Segment, length)
 	sum[0] = 2
-	result := make([]Segment, length, length)
+	result := make([]Segment, length)
 	var difference Segment
 	var carry DoubleSegment = 0
 	for m := length - 1; m >= 0; m-- {
@@ -350,7 +354,7 @@ func expandSign(sign Segment) Segment {
 }
 
 func shiftSegmentL(sa []Segment, count int) []Segment {
-	return append(sa, make([]Segment, count, count)...)
+	return append(sa, make([]Segment, count)...)
 }
 
 func getUint64(sa []Segment) uint64 {
