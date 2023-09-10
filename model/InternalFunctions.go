@@ -13,14 +13,8 @@ func createUnsignedBasedOn(value string, baseValue []Segment) ([]Segment, error)
 	length := len(value)
 	result := baseValue
 	digit := make([]Segment, 1)
-	var nonZeroIndex int
+
 	for m := 0; m < length; m++ {
-		if value[m] != '0' {
-			nonZeroIndex = m
-			break
-		}
-	}
-	for m := nonZeroIndex; m < length; m++ {
 		if value[m] < '0' || value[m] > '9' {
 			return nil, errors.New(fmt.Sprintf("Invalid Digit at %d: %c", m, value[m]))
 		}
