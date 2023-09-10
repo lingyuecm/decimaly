@@ -133,6 +133,10 @@ func (b1 *BinaryInteger) GcdWith(b2 *BinaryInteger) *BinaryInteger {
 }
 
 func (b1 *BinaryInteger) DecimalValue() string {
+	if b1.IsZero() {
+		return "0"
+	}
+
 	sa := b1.segments
 	sign := ""
 	if b1.sign > 0 {
