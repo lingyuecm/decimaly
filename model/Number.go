@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unsafe"
 )
 
 type Number struct {
@@ -50,6 +51,15 @@ func CreateNumber(value string) (*Number, error) {
 	return n, nil
 }
 
+func (n1 *Number) Negative() *Number {
+	n := new(Number)
+
+	n.digits = n1.digits.Negative()
+	n.scale = n1.scale
+
+	return n
+}
+
 func (n1 *Number) Add(n2 *Number) *Number {
 	tenBin, _ := CreateBinaryInteger("10")
 
@@ -72,4 +82,27 @@ func (n1 *Number) Add(n2 *Number) *Number {
 	n.scale = bigger(n1.scale, n2.scale)
 
 	return n
+}
+
+func (n1 *Number) DecimalValue() string {
+	decimalDigits := n1.digits.DecimalValue()
+	if 0 == n1.scale {
+		return decimalDigits
+	}
+
+	sign := ""
+	if decimalDigits[0] == '+' || decimalDigits[0] == '-' {
+		sign = decimalDigits[0:1]
+		decimalDigits = decimalDigits[1:]
+	}
+
+	length := len(decimalDigits)
+	if n1.scale >= length {
+		zeros := make([]byte, n1.scale-length)
+		for m := length; m < n1.scale; m++ {
+			zeros[m-length] = '0'
+		}
+		return sign + "0." + *(*string)(unsafe.Pointer(&zeros)) + decimalDigits
+	}
+	return sign + decimalDigits[0:length-n1.scale] + "." + decimalDigits[length-n1.scale:]
 }
