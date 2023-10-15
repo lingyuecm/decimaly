@@ -26,6 +26,19 @@ func TestNumber_Add(t *testing.T) {
 
 	n := n1.Add(n2)
 	t.Log(n.DecimalValue())
+
+	n3, _ := CreateNumber("-13413.123")
+	t.Log(n1.Add(n3).DecimalValue())
+	t.Log(n3.Add(n1).DecimalValue())
+}
+
+func TestNumber_Subtraction(t *testing.T) {
+	n1, _ := CreateNumber("2139847.9803745289075")
+	n2, _ := CreateNumber("+2139847.9803745289075")
+	t.Log(n1.Subtraction(n2).DecimalValue())
+
+	n3, _ := CreateNumber("7890367896789523.12378904059103")
+	t.Log(n1.Subtraction(n3).DecimalValue())
 }
 
 func TestNumber_DecimalValue(t *testing.T) {
