@@ -88,6 +88,15 @@ func (n1 *Number) Subtraction(n2 *Number) *Number {
 	return n1.Add(n2.Negative())
 }
 
+func (n1 *Number) Multiply(n2 *Number) *Number {
+	n := new(Number)
+
+	n.digits = n1.digits.Multiply(n2.digits)
+	n.scale = n1.scale + n2.scale
+
+	return n
+}
+
 func (n1 *Number) DecimalValue() string {
 	decimalDigits := n1.digits.DecimalValue()
 	if 0 == n1.scale {

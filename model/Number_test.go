@@ -41,6 +41,16 @@ func TestNumber_Subtraction(t *testing.T) {
 	t.Log(n1.Subtraction(n3).DecimalValue())
 }
 
+func TestNumber_Multiply(t *testing.T) {
+	n1, _ := CreateNumber("1.2")
+	n2, _ := CreateNumber("-3.4")
+
+	t.Log(n1.Multiply(n2).DecimalValue())
+
+	n3, _ := CreateNumber("0.000")
+	t.Log(n1.Multiply(n3).DecimalValue())
+}
+
 func TestNumber_DecimalValue(t *testing.T) {
 	n1, _ := CreateNumber("+13413.123")
 	t.Log(n1.DecimalValue())
