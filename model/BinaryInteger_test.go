@@ -22,6 +22,9 @@ func TestCreateBinaryInteger(t *testing.T) {
 func TestBinaryInteger_Negative(t *testing.T) {
 	b, _ := CreateBinaryInteger("123")
 	t.Log(b.Negative().DecimalValue())
+
+	b2, _ := CreateBinaryInteger("0")
+	t.Log(b2.Negative().DecimalValue())
 }
 
 func TestBinaryInteger_Add(t *testing.T) {
