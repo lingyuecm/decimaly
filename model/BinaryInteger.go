@@ -7,6 +7,10 @@ import (
 	"unsafe"
 )
 
+// BinaryInteger is the binary representation of integers
+// Considering there isn't a kind of data type consisting of 1 bit, to make full use of the memory,
+// certain count (say, s) of bits will be grouped as a Segment, which is an alias of certain unsigned integer types.
+// So such an integer is actually one of radix 2^s
 type BinaryInteger struct {
 	sign     Segment   // The Sign
 	segments []Segment // The Bits Grouped as Segments
