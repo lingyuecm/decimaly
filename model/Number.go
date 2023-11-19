@@ -8,9 +8,10 @@ import (
 	"unsafe"
 )
 
+// Number is the precise representation of float point numbers
 type Number struct {
-	digits *BinaryInteger
-	scale  int
+	digits *BinaryInteger // The digits of the number as if there were no decimal point
+	scale  int            // The times the digits need to be divided by 10 to get the number
 }
 
 func CreateNumber(value string) (*Number, error) {

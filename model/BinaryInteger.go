@@ -9,7 +9,7 @@ import (
 
 // BinaryInteger is the binary representation of integers
 // Considering there isn't a kind of data type consisting of 1 bit, to make full use of the memory,
-// certain count (say, s) of bits will be grouped as a Segment, which is an alias of certain unsigned integer types.
+// certain count (say, s) of bits will be grouped as a Segment, which is an alias of one of unsigned integer types.
 // So such an integer is actually one of radix 2^s
 type BinaryInteger struct {
 	sign     Segment   // The Sign
@@ -42,10 +42,12 @@ func CreateBinaryInteger(value string) (*BinaryInteger, error) {
 	return i, nil
 }
 
+// IsZero Checks whether an integer is zero
 func (b1 *BinaryInteger) IsZero() bool {
 	return len(b1.segments) == 1 && b1.segments[0] == 0
 }
 
+// Negative Generates the negation of an integer
 func (b1 *BinaryInteger) Negative() *BinaryInteger {
 	i := new(BinaryInteger)
 
@@ -55,6 +57,7 @@ func (b1 *BinaryInteger) Negative() *BinaryInteger {
 	return i
 }
 
+// Add Adds another integer and gets the sum
 func (b1 *BinaryInteger) Add(b2 *BinaryInteger) *BinaryInteger {
 	sa1 := generateComplement(append(make([]Segment, 1), b1.segments...), b1.sign)
 	sa2 := generateComplement(append(make([]Segment, 1), b2.segments...), b2.sign)
@@ -71,10 +74,12 @@ func (b1 *BinaryInteger) Add(b2 *BinaryInteger) *BinaryInteger {
 	return i
 }
 
+// Subtract Subtracts another integer and gets the difference
 func (b1 *BinaryInteger) Subtract(b2 *BinaryInteger) *BinaryInteger {
 	return b1.Add(b2.Negative())
 }
 
+// Multiply Multiplies another integer and gets the product
 func (b1 *BinaryInteger) Multiply(b2 *BinaryInteger) *BinaryInteger {
 	i := new(BinaryInteger)
 
@@ -84,6 +89,7 @@ func (b1 *BinaryInteger) Multiply(b2 *BinaryInteger) *BinaryInteger {
 	return i
 }
 
+// DividedBy Divides the integer with another one (NOT Zero) and gets the quotient and the remainder
 func (b1 *BinaryInteger) DividedBy(b2 *BinaryInteger) (*BinaryInteger, *BinaryInteger, error) {
 	if b2.IsZero() {
 		return nil, nil, errors.New(fmt.Sprintf("Cannot Be Divided by Zero"))
@@ -103,6 +109,7 @@ func (b1 *BinaryInteger) DividedBy(b2 *BinaryInteger) (*BinaryInteger, *BinaryIn
 	return quotient, remainder, nil
 }
 
+// GcdWith Gets the greatest common divider of the integer and another one
 func (b1 *BinaryInteger) GcdWith(b2 *BinaryInteger) *BinaryInteger {
 	sa1 := b1.segments
 	sa2 := b2.segments
@@ -120,6 +127,7 @@ func (b1 *BinaryInteger) GcdWith(b2 *BinaryInteger) *BinaryInteger {
 	}
 }
 
+// DecimalValue Gets the string representing the decimal value of the integer
 func (b1 *BinaryInteger) DecimalValue() string {
 	if b1.IsZero() {
 		return "0"
